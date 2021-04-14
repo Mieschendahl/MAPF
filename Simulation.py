@@ -6,6 +6,9 @@ class Simulation:
     defaultagent = "a"
     defaultsource = "s"
     defaulttarget = "t"
+    defaultspace = "#"
+
+    adjacent = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
     def fromfile(path):
         nodes = []
@@ -20,16 +23,18 @@ class Simulation:
         agenttochar = {}
         
         with open(path, "r") as f:
-            matrix = f.read().split("\n")
+            matrix = [line for line in f.read().split("\n") if line]
 
         width = len(matrix[0])
         height = len(matrix)
 
+        assert all(width == len(line) for line in matrix), width
+
         for y, line in enumerate(matrix):
             for x, char in enumerate(line):
-                if char != " ":
+                if char != Simulation.defaultspace:
                     nodes.append(nodes[-1] + 1 if nodes else 0)
-                    edges[nodes[-1]] = {nodes[-1]}
+                    edges[nodes[-1]] = set()
                     positiontonode[(x, y)] = nodes[-1]
 
                     if char != Simulation.defaultnode and char.isalpha():
@@ -39,6 +44,15 @@ class Simulation:
                             agenttosource[char] = nodes[-1]
                         else:
                             agenttotarget[char] = nodes[-1]
+
+        for y, line in enumerate(matrix):
+            for x, char in enumerate(line):
+                if (x, y) in positiontonode:
+                    node = positiontonode[(x, y)]
+                    for dx, dy in Simulation.adjacent:
+                        x0, y0 = x + dx, y + dy
+                        if x0 >= 0 and y0 >= 0 and x0 < width and y0 < height and (x0, y0) in positiontonode:
+                            edges[node] |= {positiontonode[(x0, y0)]}
 
         return Simulation(nodes, edges, agents, agenttosource, agenttotarget, width, height, positiontonode, nodetochar, agenttochar)
 
@@ -67,7 +81,7 @@ class Simulation:
         string = []
         for y in range(self.height):
             for x in range(self.width):
-                char = " "
+                char = Simulation.defaultspace
 
                 if (x, y) in self.positiontonode:
                     node = self.positiontonode[(x, y)]
